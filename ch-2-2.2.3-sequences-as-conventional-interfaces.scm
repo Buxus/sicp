@@ -128,8 +128,8 @@
 ;; evaluate
 
 (horner-eval 2 (list 1 3 0 5 0 1))
-79
-
+7
+9
 
 ;; *Exercise 2.35:* Redefine `count-leaves' from section *Note
 ;; 2-2-2:: as an accumulation:
