@@ -132,11 +132,10 @@
 ;; 	   (ordered-triples n)))
 
 (define (fizzbuzz n)
-  (map (lambda (i) (cond ((= 0 (remainder i 15)) (display "fizzbuzz"))
-			 ((= 0 (remainder i 3)) (display "fizz"))
-			 ((= 0 (remainder i 5)) (display "buzz"))
-			 (else (display i)))
-	       (display "\n"))
+  (map (lambda (i)
+	 (cond ((= 0 (remainder i 15)) (display "fizzbuzz"))
+	       ((= 0 (remainder i 3))  (display "fizz"))
+	       ((= 0 (remainder i 5))  (display "buzz"))
+	       (else (display i)))
+	 (display "\n"))
        (enumerate-interval 1 n)))
-
-(fizzbuzz 5)
