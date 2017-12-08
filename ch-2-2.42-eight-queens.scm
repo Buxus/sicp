@@ -157,7 +157,7 @@
 						       (- (position-col position) 1))
 					rest-positions))))      
       (define (safe-down-left-diag? position rest-positions)
-	(cond ((< (position-col position) 0) #t) ;; need to add row out-of-bounds condition?
+	(cond ((< (position-col position) 0) #t) ;; need to add position-row out-of-bounds condition?
 	      ((member position rest-positions) #f)
 	      (else (safe-down-left-diag? (make-position (+ (position-row position) 1)
 							 (- (position-col position) 1))
@@ -168,6 +168,9 @@
 	       (safe-down-left-diag? kth-queen rest-queens))
 	  #t
 	  #f))))
+
+;; (queens 1)
+;; (((1 . 1)))
 
 ;; (queens 3)
 ;; ()
@@ -185,3 +188,25 @@
 ;; ERRORError: retort-syntax
 
 
+;; *Exercise 2.43:* Louis Reasoner is having a terrible time doing
+;; *Note Exercise 2-42::.  His `queens' procedure seems to work, but
+;; it runs extremely slowly.  (Louis never does manage to wait long
+;; enough for it to solve even the 6*6 case.)  When Louis asks Eva Lu
+;; Ator for help, she points out that he has interchanged the order
+;; of the nested mappings in the `flatmap', writing it as
+
+;; (flatmap
+;;  (lambda (new-row)
+;;    (map (lambda (rest-of-queens)
+;; 	  (adjoin-position new-row k rest-of-queens))
+;; 	(queen-cols (- k 1))))
+;;  (enumerate-interval 1 board-size))
+
+;; Explain why this interchange makes the program run slowly.
+;; Estimate how long it will take Louis's program to solve the
+;; eight-queens puzzle, assuming that the program in *Note Exercise
+;; 2-42:: solves the puzzle in time T.
+
+;; Louis's program generates for each queen the board configurations for each
+;; rest-of-queens not each-new-row.  The result will be boards with queens placed
+;; in/not on every possible square.  the puzzle will therefore take (board-size ^ board*size) * T
