@@ -108,14 +108,6 @@
 ;; (position-row (list-ref test-queens 1))
 ;; 2
 
-(define test-queens-fail-horiz
-  (adjoin-position 3 3
-		   (adjoin-position 1 2
-				    (list (make-position 1 1)))))
-
-;; test-queens-fail-horiz
-;; ((1 . 1) (1 . 2) (3 . 3))
-
 ;; (define test-position (make-position 1 1))
 ;; test-position (1 . 1)
 
