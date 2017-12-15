@@ -338,10 +338,50 @@
 
 (define (four-square painter1 painter2 painter3 painter4)
   (below (beside painter1 painter2)
-	 (beside painter3 painter4)))
+ c	 (beside painter3 painter4)))
 
 (define four-pepes
   (four-square pepe
 	       (flip-horiz pepe)
 	       (flip-vert pepe)
 	       (flip-vert (flip-horiz pepe))))
+
+;; *Exercise 2.52:* Make changes to the square limit of `wave' shown
+;; in *Note Figure 2-9:: by working at each of the levels described
+;; above.  In particular:
+
+;;   a. Add some segments to the primitive `wave' painter of *Note
+;;      Exercise 2-49:: (to add a smile, for example).
+(define smile
+  (segments->painter (list (make-segment (make-vect 0.0 0.5) (make-vect 0.5 0.0))
+			   (make-segment (make-vect 0.5 0.0) (make-vect 1.0 0.5))
+			   (make-segment (make-vect 0.25 1.0) (make-vect 0.25 0.5))
+			   (make-segment (make-vect 0.75 1.0) (make-vect 0.75 0.5)))))
+
+;;   b. Change the pattern constructed by `corner-split' (for
+;;      example, by using only one copy of the `up-split' and
+;;      `right-split' images instead of two).
+(define (corner-split painter n)
+  (if (= n 0)
+      painter
+      (let ((up (up-split painter (- n 1)))
+	    (right (right-split painter (- n 1))))
+	(let ((top-left (beside right right))
+	      (bottom-right (below up up))
+	      (corner (corner-split painter (- n 1))))
+	  (beside top-left
+		  (below top-left corner))))))
+
+
+;;   c. Modify the version of `square-limit' that uses
+;;      `square-of-four' so as to assemble the corners in a different
+;;      pattern.  (For example, you might make the big Mr. Rogers
+;;      look outward from each corner of the square.)
+
+(define (square-limit painter n)
+  ;;swapped flip-horiz and flip-vert
+  (let ((combine4 (square-of-four flip-vert identity
+				  rotate180 flip-horiz)))
+    (combine4 (corner-split painter n))))
+
+
