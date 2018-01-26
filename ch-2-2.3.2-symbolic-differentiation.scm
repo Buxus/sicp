@@ -162,10 +162,7 @@
 
 (define (addend s) (car s))
 
-(define (augend s) (caddr s));(if (not (product? (cddr s)))
-		   ;    (caddr s)
-		   ;    (make-product (multiplier (caddr s))
-		   ;		     (multiplicand (caddr s)))))
+(define (augend s) (simplify (cddr s)))
 
 (define (sum? x)
   (and (pair? x) (eq? (cadr x) '+)))
@@ -175,7 +172,7 @@
 
 (define (multiplier p) (car p))
 
-(define (multiplicand p) (caddr p))
+(define (multiplicand p) (simplify (cddr p)))
 
 (define (make-sum a1 a2)
   (cond ((=number? a1 0) a2)
@@ -215,5 +212,12 @@
 ;;      such that our derivative program still works?
 
 
+(define (simplify exp)
+  (if (null? (cdr exp))
+      (car exp)
+      exp))
 
 
+;; (deriv '(x + 3 * (x + y + 2)) 'x)
+;; 4
+;; This doesn't actually work right
