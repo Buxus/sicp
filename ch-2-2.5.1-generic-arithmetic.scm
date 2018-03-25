@@ -426,39 +426,86 @@
 
 ;; this strategy is not sufficiently general in the case where and intermediate
 ;; coercion is possible  between two types, but where the two types could not
- ;; be coerced directly to the other. I.e., Type A -> Type B-> Type C -> exists
+;; be coerced directly to the other. I.e., Type A -> Type B-> Type C -> exists
 ;; but no Type A -> Type C.
 
-(define (coerce-to target-type args)
-  (if (null? args)
-      '()
-      (let ((this-arg (car args))
-	    (rest (cdr args)))
-	(let ((this-type (type-tag this-arg)))
-	  (let ((this-type->target-type (get-coercion this-type target-type)))
-	    (if this-type->target-type
-		(cons (this-type->target-type this-arg)
-		      (coerce-to target-type rest))
-		#f))))))
+;; (define (coerce-list-to target-type args)
+;; ;; Recursively build a list of coereced types
+;;   (if (null? args)
+;;       '()
+;;       (let ((this-arg (car args))
+;; 	    (rest (cdr args)))
+;; 	(let ((this-type (type-tag this-arg)))
+;; 	  (let ((this-type->target-type (get-coercion this-type target-type)))
+;; 	    (if this-type->target-type
+;; 		(cons (this-type->target-type this-arg)
+;; 		      (coerce-list-to target-type rest))
+;; 		#f))))))
 
+
+;; (define (apply-generic op . args)
+;;   (let ((type-tags (map type-tag args)))
+;;     (let ((proc (get op type-tags)))
+;;       (if proc 
+;; 	  (apply proc (map contents args))
+;; 	  (coerce-all type-tags op args)))))
+
+;; (define (coerce-all type-tags op args)
+;;   (if (not (null? type-tags))
+;;       (let ((first-tag (car type-tags)))
+;; 	(let ((coerced-set (coerce-to first-tag args)))
+;; 	  (if (not (memq #f coerced-set))
+;; 	      (map (apply-generic op coerced-set))
+;; 	      (coerce-all (cdr type-tags) op args))))
+;; 	(error "No method for these types"
+;; 	       (list op type-tags))))
+
+;; Plagiarized from
+;; https://jots-jottings.blogspot.com/2012/02/sicp-exercise-282-multi-argument.html
 (define (apply-generic op . args)
-  (let ((type-tags (map type-tag args)))
-    (let ((proc (get op type-tags)))
-      (if proc 
-	  (apply proc (map contents args))
-	  (coerce-all type-tags op args)))))
-
-(define (coerce-all type-tags op args)
-  (if (not (null? type-tags))
-      (let ((first-tag (car type-tags)))
-	(let ((coerced-set (coerce-to first-tag args)))
-	  (if (not (memq #f coerced-set))
-	      (map (apply-generic op coerced-set))
-	      (coerce-all (cdr type-tags) op args))))
-	(error "No method for these types"
-	       (list op type-tags))))
-  
-
+  (define (uniquify l)
+    (if (null? l)
+        '()
+        (let ((head (car l))
+              (tail (cdr l)))
+          (if (memq head tail)
+              (uniquify tail)
+              (cons head (uniquify tail))))))
+  (define (coerce-to target-type remaining-args result)
+    (if (null? remaining-args)
+        result
+        (let* ((arg (car remaining-args))
+               (original-type (type-tag arg)))
+          (if (eq? original-type target-type)
+              (coerce-to target-type
+                         (cdr remaining-args)
+                         (append result (list arg)))
+              (let ((original->target (get-coercion (type-tag arg) target-type)))
+                (if original->target
+                    (coerce-to target-type
+                               (cdr remaining-args)
+                               (append result (list (original->target arg))))
+                    #f))))))
+  (define (apply-generic-iter coercion-types)
+    (if (null? coercion-types)
+        (error "No method for these types, and could not coerce"
+               (list op (map type-tag args)))
+        (let ((coerced-args (coerce-to (car coercion-types) args '())))
+          (if coerced-args
+              (let ((proc (get op (map type-tag coerced-args))))
+                (if proc
+                    (apply proc (map contents coerced-args))
+                    (apply-generic-iter (cdr coercion-types))))
+              (apply-generic-iter (cdr coercion-types))))))
+  (let* ((type-tags (map type-tag args))
+         (proc (get op type-tags)))
+    (if proc
+        (apply proc (map contents args))
+        (let ((unique-types (uniquify type-tags)))
+          (if (> (length unique-types) 1)
+              (apply-generic-iter unique-types)
+              (else (error "No method for this type"
+                           (list op type-tags))))))))
 
 ;; *Exercise 2.83:* Suppose you are designing a generic arithmetic
 ;; system for dealing with the tower of types shown in *Note Figure
@@ -471,7 +518,7 @@
 (define (raise-rational n)
   (apply (get-coercion 'rational 'real) n))
 (define (raise-real n)
-  (apply (ger-coercion 'real 'complex) n))
+  (apply (get-coercion 'real 'complex) n))
 
 
 ;; *Exercise 2.84:* Using the `raise' operation of *Note Exercise
@@ -529,3 +576,4 @@
   (make-complex-from-real-imag 5 6))
 (define test-rational-number
   (make-rational 7 8))
+
