@@ -1,53 +1,50 @@
-;; a 2d table recording the corresponding proc:
-;; proc-table[type][op] => the proc
-;; Operations | Polar           | Rectangular
-;; ===========+=================+======================
-;; real-part  | real-part-polar | real-part-rectangular
-;; imag-part  | imag-part-polar | imag-part-rectangular
-;; magnitude  | magnitude-polar | magnitude-rectangular
-;; angle      | angle-polar     | angle-rectangular
-(define proc-table '())
+;; put and get functions from ch2support.scm
 
-(define (put-alist key val alist)
-  (cons (list key val)
-        (del-assoc key alist)))
+(define (assoc key records)
+  (cond ((null? records) false)
+        ((equal? key (caar records)) (car records))
+        (else (assoc key (cdr records)))))
 
-(define (put-proc op type item table)
-  ; use assoc because type-val would be a list of symbols
-  (let ((type-val (assoc type table)))
-    (if type-val
-      ; if the type exists
-      (let* ((op-table (cadr type-val))
-             (new-op-table (put-alist op item op-table)))
-        (put-alist type new-op-table table))
-      ; else
-      (put-alist type
-                 (list (list op item)) ; single key-value pair
-                 table))))
+(define (make-table)
+  (let ((local-table (list '*table*)))
+    (define (lookup key-1 key-2)
+      (let ((subtable (assoc key-1 (cdr local-table))))
+        (if subtable
+            (let ((record (assoc key-2 (cdr subtable))))
+              (if record
+                  (cdr record)
+                  false))
+            false)))
+    (define (insert! key-1 key-2 value)
+      (let ((subtable (assoc key-1 (cdr local-table))))
+        (if subtable
+            (let ((record (assoc key-2 (cdr subtable))))
+              (if record
+                  (set-cdr! record value)
+                  (set-cdr! subtable
+                            (cons (cons key-2 value)
+                                  (cdr subtable)))))
+            (set-cdr! local-table
+                      (cons (list key-1
+                                  (cons key-2 value))
+                            (cdr local-table)))))
+      'ok)    
+    (define (dispatch m)
+      (cond ((eq? m 'lookup-proc) lookup)
+            ((eq? m 'insert-proc!) insert!)
+            (else (error "Unknown operation -- TABLE" m))))
+    dispatch))
 
-(define (put op type item)
-  (set! proc-table (put-proc op type item proc-table)))
-
-(define (get op type)
-  ; use assoc because type-val would be a list of symbols
-  (let ((type-val (assoc type proc-table)))
-    (if type-val
-      (let* ((op-table (cadr type-val))
-             (op-proc-pair (assoc op op-table)))
-        (if op-proc-pair
-          (cadr op-proc-pair)
-          #f))
-      #f)))
+(define operation-table (make-table))
+(define get (operation-table 'lookup-proc))
+(define put (operation-table 'insert-proc!))
 
 ;; Coercion Table
 
-(define *coercion-table* (make-equal-hash-table)) 
+(define coercion-table (make-table)) 
+(define get-coercion (coercion-table 'lookup-proc))
+(define put-coercion (coercion-table 'insert-proc!))
 
-(define (put-coercion type1 type2 proc) 
-  (hash-table/put! *coercion-table* (list type1 type2) proc)) 
-
-(define (get-coercion type1 type2) 
-  (hash-table/get *coercion-table* (list type1 type2) '()))
 
 (define (install-coercion-package)
   (define (scheme-number->rational n)
@@ -164,7 +161,7 @@
        (lambda (r a) (tag (make-from-mag-ang r a))))
   (put 'equ? '(polar polar) equ?)
   (put '=zero? '(polar) =zero?)
-  'done)
+a  'done)
 
 (define (install-rectangular-package)
   ;; internal procedures
