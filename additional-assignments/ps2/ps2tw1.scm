@@ -1,4 +1,4 @@
-;;; Scheme code for Twenty-One Simulator [PS2 Fall '90]
+;; Scheme code for Twenty-One Simulator [PS2 Fall '90]
 
 (define (twenty-one player-strategy house-strategy)
   (let ((house-initial-hand (make-new-hand (deal))))
@@ -29,22 +29,6 @@
 
 
 (define (deal) (+ 1 (random 10)))
-
-(define (make-new-hand first-card)
-  (make-hand first-card first-card))
-
-(define (make-hand up-card total)
-  (cons up-card total))
-
-(define (hand-up-card hand)
-  (car hand))
-
-(define (hand-total hand)
-  (cdr hand))
-
-(define (hand-add-card hand new-card)
-  (make-hand (hand-up-card hand)
-             (+ new-card (hand-total hand))))
 
 (define (hit? your-hand opponent-up-card)
   (newline)
@@ -95,8 +79,119 @@
     (display "Decision: ")
     (display (if (strategy your-hand opponent-up-card)
 		 "Hit"
-		 "Stand"))))
+		 "Stand"))
+    (strategy your-hand opponent-up-card)))
 
-(test-strategy (watch-player (stop-at 16))
-	       (watch-player (stop-at 15))
-	       2)
+;; TODO This doesn't work right yet
+;; 
+;; (test-strategy (watch-player (stop-at 16))
+;; 	       (watch-player (stop-at 15))
+;; 	       2)
+
+;; Opponent up card 8
+;; Your total: 10
+;; Decision: Hit
+;; Opponent up card 8
+;; Your total: 13
+;; Decision: Hit
+;; Opponent up card 8
+;; Your total: 20
+;; Decision: Stand
+;; Opponent up card 10
+;; Your total: 8
+;; Decision: Hit
+;; Opponent up card 10
+;; Your total: 18
+;; Decision: Stand
+;; Opponent up card 2
+;; Your total: 3
+;; Decision: Hit
+;; Opponent up card 2
+;; Your total: 9
+;; Decision: Hit
+;; Opponent up card 2
+;; Your total: 18
+;; Decision: Stand
+;; Opponent up card 3
+;; Your total: 2
+;; Decision: Hit
+;; Opponent up card 3
+;; Your total: 5
+;; Decision: Hit
+;; Opponent up card 3
+;; Your total: 12
+;; Decision: Hit
+;; Opponent up card 3
+;; Your total: 20
+;; Decision: Stand
+;; ;Value: 1
+
+(define (louis your-hand opponent-up-card)
+  (cond ((< (hand-total your-hand) 12) #t)
+	((> (hand-total your-hand) 16) #f)
+	((and (= (hand-total your-hand) 16) (= opponent-up-card 10)) #f)
+	(else
+	 (if (> opponent-up-card 6)
+	     #t #f))))
+
+;; (test-strategy louis (stop-at 15) 10)
+;; 5
+
+;; (test-strategy louis (stop-at 16) 10)
+;; 2
+
+;; (test-strategy louis (stop-at 17) 10)
+;; 4
+
+	   
+(define (both strat1 strat2)
+  (lambda (your-hand opponent-up-card)
+    (and (strat1 your-hand opponent-up-card)
+	 (strat2 your-hand opponent-up-card))))
+
+;; Tutorial Exercise 1
+;; System to keep track of actual cards in hand
+
+(define (make-card value suit)
+  (cons value suit))
+
+(define (card-value card)
+  (car card))
+
+(define (card-suit card)
+  (cdr card))
+
+(define (add-card-to-set card set)
+  (append set (list card)))
+
+(define (make-new-hand first-card)
+  (make-hand first-card '()))
+
+(define (make-hand up-card card-set)
+  (cons up-card card-set))
+
+(define (hand-up-card hand)
+  (car hand))
+
+(define (hand-card-set hand)
+  (cdr hand))
+
+(define (hand-total hand)
+  (card-set-value (hand-card-set hand)))
+
+(define (accumulate op base func ls)
+  (if (null? ls)
+      base
+      (op (func (car ls))
+	  (accumulate op base func (cdr ls)))))
+
+(define (card-set-value card-set)
+  (accumulate + 0 card-value card-set))
+
+;; (card-set-value (add-card-to-set (make-card 9 "spades") (make-new-hand (make-card 3 "clubs"))))
+;;  12
+
+(define (hand-add-card hand new-card card-set)
+  (make-hand (hand-up-card hand)
+             (add-card-to-set new-card card-set)))
+
