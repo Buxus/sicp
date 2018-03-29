@@ -156,7 +156,10 @@
   (cons value suit))
 
 (define (card-value card)
-  (car card))
+  (let ((car-card (car card)))
+    (if (number? car-card)
+	car-card
+	10)))
 
 (define (card-suit card)
   (cdr card))
@@ -194,4 +197,66 @@
 (define (hand-add-card hand new-card card-set)
   (make-hand (hand-up-card hand)
              (add-card-to-set new-card card-set)))
+
+;; Tutorial Exercise 2
+;; finite deck
+
+(define (enumerate-interval low high)
+  (if (> low high)
+      '()
+      (cons low (enumerate-interval (+ low 1) high))))
+
+(define (identity x)
+  x)
+
+(define (flatmap proc seq)
+  (fold-right append '() (map proc seq)))
+
+(define (map2d X Y)
+  (flatmap
+   (lambda (i)
+     (map (lambda (j)
+            (cons i j))
+          Y))
+   X))
+
+(define generate-deck
+  (lambda ()
+    (let ((suits '("spades" "hearts" "clubs" "diamonds"))
+	  (values (enumerate-interval 1 10))
+	  (faces '("jack" "king" "queen")))
+      (append (map2d values suits)
+	      (map2d faces suits)))))
+
+;; (generate-deck)
+;; ((1 . "spades") (1 . "hearts") (1 . "clubs") (1 . "diamonds")
+;;  (2 . "spades") (2 . "hearts") (2 . "clubs") (2 . "diamonds")
+;;  (3 . "spades") (3 . "hearts") (3 . "clubs") (3 . "diamonds")
+;;  (4 . "spades") (4 . "hearts") (4 . "clubs") (4 . "diamonds")
+;;  (5 . "spades") (5 . "hearts") (5 . "clubs") (5 . "diamonds")
+;;  (6 . "spades") (6 . "hearts") (6 . "clubs") (6 . "diamonds")
+;;  (7 . "spades") (7 . "hearts") (7 . "clubs") (7 . "diamonds")
+;;  (8 . "spades") (8 . "hearts") (8 . "clubs") (8 . "diamonds")
+;;  (9 . "spades") (9 . "hearts") (9 . "clubs") (9 . "diamonds")
+;;  (10 . "spades") (10 . "hearts") (10 . "clubs") (10 . "diamonds")
+;;  ("jack" . "spades") ("jack" . "hearts") ("jack" . "clubs") ("jack" . "diamonds")
+;;  ("king" . "spades") ("king" . "hearts") ("king" . "clubs") ("king" . "diamonds")
+;;  ("queen" . "spades") ("queen" . "hearts") ("queen" . "clubs") ("queen" . "diamonds"))
+
+
+(define (shuffle deck)
+  (let* ((deck-size (length deck))
+	 (half (/ deck-size 2))
+	 (first-half (sublist deck 0 half))
+	 (second-half (sublist deck half deck-size)))
+    (define (helper n first-half second-half)
+      (if (= 0 n)
+	  '()
+	  (append (if (= 0 (random 2))
+		      (list (car first-half) (car second-half))
+		      (list (car second-half) (car first-half)))
+		  (helper (- n 1) (cdr first-half) (cdr second-half)))))
+    (helper half first-half second-half)))
+
+
 
