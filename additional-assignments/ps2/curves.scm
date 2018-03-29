@@ -1,3 +1,12 @@
+;;TODO: This doesn't work 
+
+#lang racket
+
+(require "../lib/pic-lib.rkt")
+(require "../lib/curves.rkt")
+(require "../lib/utils.rkt")
+(require "../lib/arithmetic.rkt")
+
 ;;;; CURVES.SCM
 
                                         ;Point = (Sch-Num X Sch-Num)
@@ -27,9 +36,21 @@
   (make-point (sin (* 2pi (square t)))
               (cos (* 2pi (square t)))))
 
-                                        ;Curve-Transform = (Curve --> Curve)
+;; Exercise 2
+;; unit-line-at (not shown)
+;; Sch-Num -> Curve
 
-                              ;;SOME CURVE-TRANSFORMS
+(define (vertical-line point length)
+  (let ((x (x-of point))
+	(y (y-of point)))
+    (lambda (t) (if (and (< (- t y) length) (positive? (- t y)))
+		    (make-point x t)
+		    null-point))))
+;; vertical-line is a curve.  Point, Sch-Num -> Curve
+
+;Curve-Transform = (Curve --> Curve)
+
+;;SOME CURVE-TRANSFORMS
 
 
 (define (rotate-pi/2 curve)
@@ -38,6 +59,15 @@
       (make-point
        (- (y-of ct))
        (x-of ct)))))
+
+;;Exercise 3
+
+(define (reflect-through-y-axis curve)
+  (lambda (t)
+    (let ((ct (curve t)))
+      (make-point
+       (x-of ct)
+       (- (y-of ct))))))
 
                            ;;CONSTRUCTORS OF CURVE-TRANSFORMS
 
@@ -49,7 +79,7 @@
       (let ((ct (curve t)))
         (make-point (+ x0 (x-of ct))
                     (+ y0 (y-of ct)))))))
-
+
 ;;; ROTATE-AROUND-ORIGIN is of type (Sch-Num --> Curve-Transform)
 
 (define (rotate-around-origin theta)
@@ -95,7 +125,7 @@
 
 (define (scale s)
   (scale-x-y s s))
-
+
 ;;; SQUEEZE-RECTANGULAR-PORTION translates and scales a curve
 ;;; so the portion of the curve in the rectangle
 ;;; with corners xlo xhi ylo yhi will appear in a display window
@@ -128,7 +158,7 @@
     ((scale (/ 1 end-point-on-x-axis)) curve-ended-at-x-axis)))
 
 
-                                        ;Binary-transform = (Curve,Curve --> Curve)
+ ;Binary-transform = (Curve,Curve --> Curve)
 
 ;;; CONNECT-RIGIDLY makes a curve consisting of curve1 followed by curve2.
 
@@ -141,8 +171,17 @@
 ;;; CONNECT-ENDS makes a curve consisting of curve1 followed by
 ;;;  a copy of curve2 starting at the end of curve1
 
-;;;(define (connect-ends curve1 curve2) ...)
-
+(define (connect-ends curve1 curve2)
+  (let* ((end-point-c1 (curve1 1))
+	 (start-point-c2 (curve2 0))
+	 (new-curve2 ((translate (- (x-of end-point-c1) (x-of start-point-c2))
+				 (- (y-of end-point-c1) (y-of start-point-c2))))))
+    (lambda (t)
+      (if (< t (/ 1 2))
+	  (curve1 (* 2 t))
+	  (new-curve2 (- (* 2 t) 1))))))
+       
+       
                           ;;FRACTAL CURVES
 
 ;;; GOSPERIZE is a Curve-Transform

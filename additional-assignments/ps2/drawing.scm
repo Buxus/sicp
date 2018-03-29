@@ -57,7 +57,7 @@
   (lambda (curve)    
     ((draw-connected window n)
      (((corners curve n) squeeze-rectangular-portion) curve))))
-
+
 ;;; CORNERS computes the max and min values of the x and y coordinates
 ;;; of n points on a given curve.
 ;;; It then applies a given procedure CORNERS-USER of type (NUM,NUM,NUM,NUM --> TYP)
