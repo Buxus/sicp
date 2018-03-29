@@ -48,16 +48,55 @@
 
 (define (hit? your-hand opponent-up-card)
   (newline)
-  (princ "Opponent up card ")
-  (princ opponent-up-card)
+  (display "Opponent up card ")
+  (display opponent-up-card)
   (newline)
-  (princ "Your Total: ")
-  (princ (hand-total your-hand))
+  (display "Your Total: ")
+  (display (hand-total your-hand))
   (newline)
-  (princ "Hit? ")
+  (display "Hit? ")
   (user-says-y?))
 
 
-(define (user-says-y?) (eq? (read-from-keyboard) 'y))
+(define (user-says-y?) (eq? (read-char) 'y))
 
+(define (stupid-strategy my-hand opponent-up-card)
+  (> opponent-up-card 5))
 
+(define (stop-at num)
+  (lambda (your-hand opponent-up-card)
+    (if (< (hand-total your-hand) num)
+	#t
+	#f)))
+
+(define (test-strategy strat1 strat2 num-games)
+  (define (iter strat1 strat2 num-games player-wins)
+    (if (= 0 num-games)
+	player-wins
+	(iter strat1
+	      strat2
+	      (- num-games 1)
+	      (+ player-wins
+		 (twenty-one strat1 strat2)))))
+  (iter strat1 strat2 num-games 0))
+
+;; (test-strategy (stop-at 16) (stop-at 21) 10)
+;;  7
+
+(define (watch-player strategy)
+  (lambda (your-hand opponent-up-card)
+    (newline)
+    (display "Opponent up card ")
+    (display opponent-up-card)
+    (newline)
+    (display "Your total: ")
+    (display (hand-total your-hand))
+    (newline)
+    (display "Decision: ")
+    (display (if (strategy your-hand opponent-up-card)
+		 "Hit"
+		 "Stand"))))
+
+(test-strategy (watch-player (stop-at 16))
+	       (watch-player (stop-at 15))
+	       2)
