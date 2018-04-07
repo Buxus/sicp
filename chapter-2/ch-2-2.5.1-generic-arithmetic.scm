@@ -23,12 +23,12 @@
                   (set-cdr! record value)
                   (set-cdr! subtable
                             (cons (cons key-2 value)
-                                  (cdr subtable)))))
+       q                           (cdr subtable)))))
             (set-cdr! local-table
                       (cons (list key-1
                                   (cons key-2 value))
                             (cdr local-table)))))
-      'ok)    
+      'ok)
     (define (dispatch m)
       (cond ((eq? m 'lookup-proc) lookup)
             ((eq? m 'insert-proc!) insert!)

@@ -393,7 +393,7 @@
 ;; 	(let ((res (solve-ax+by=1 b r)))
 ;; 	  (cons (cdr res) (+ (car res) (* (- q) (cdr res))))))))
 
-(define (ax+by=1 a b)
+(define (solve-ax+by=1 a b)
         (if (= b 0)
             (cons 1 0)
             (let* ((q (quotient a b))
@@ -423,8 +423,9 @@
 	(e (key-exponent public-key)))
     (let* ((p (smallest-divisor n))
 	   (q (/ n p)))
-      (let ((m (* (- p 1) (- q 1))))
-	(cdr (solve-ax+by=1 m e))))))
+      (let ((m (* (- p 1)
+		  (- q 1))))
+	(solve-ax+by=1 m e)))))
 
 ;; (crack-rsa newt-gingrich-public-key)
 ;; 129033029
@@ -439,6 +440,7 @@
 ;; (crack-rsa bill-clinton-public-key)
 ;; -130787105
 
+bill-clinton-put
 
 ;; Exercise 6
 (define (forge-message message sender-public-key recipient-public-key)
@@ -453,6 +455,3 @@
 
 ;; (timed smallest-divisor 780450379)
 ;; 25057
-
-
-;; (timed smallest-divisor 

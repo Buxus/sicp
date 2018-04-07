@@ -27,8 +27,13 @@
                     opponent-up-card))
         (else my-hand)))                ; stay
 
+;; (define (twenty-one player-strategy house-strategy)
+;;   (let ((deck (generate-deck)))
+;;     (let ((house-initial-hand (make-new-hand (car deck))))
+;;       (let ((player-hand
+;; 	     (play-hand player-strategy 
 
-(define (deal) (+ 1 (random 10)))
+(define (deal deck) (car deck))
 
 (define (hit? your-hand opponent-up-card)
   (newline)
@@ -40,7 +45,7 @@
   (newline)
   (display "Hit? ")
   (user-says-y?))
-
+m
 
 (define (user-says-y?) (eq? (read-char) 'y))
 
