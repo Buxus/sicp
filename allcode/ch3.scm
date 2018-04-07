@@ -87,18 +87,57 @@
 ;: (A 10)
 ;: (A 10)
 
+(define (make-accumulator sum)
+  (define (accumulate amount)
+    (set! sum (+ sum amount))
+    sum)
+  accumulate)
 
 ;; EXERCISE 3.2
 ;: (define s (make-monitored sqrt))
 ;: (s 100)
 ;: (s 'how-many-calls?)
 
+(define (make-monitored f)
+  (let ((call-counter (make-accumulator 0)))
+    (define (mf message)
+      (cond ((eq? message 'how-many-calls?) (call-counter 0))
+	    ((eq? message 'reset-count) (set! call-counter (make-accumulator 0)))
+	    (else (begin (call-counter 1)
+			 (f message)))))
+    mf))
 
 ;; EXERCISE 3.3
 ;: (define acc (make-account 100 'secret-password))
 ;: ((acc 'secret-password 'withdraw) 40)
 ;: ((acc 'some-other-password 'deposit) 50)
 
+(define (make-account balance password)
+  (let ((account-password password))
+    (define (withdraw amount)
+      (if (>= balance amount)
+          (begin (set! balance (- balance amount))
+		 balance)
+          "Insufficient funds"))
+    (define (deposit amount)
+      (set! balance (+ balance amount))
+      balance)
+    (define check-password
+      (make-monitored
+       (lambda (password)
+	 (eq? password account-password))))
+    (define call-the-cops
+      (lambda args "The police have been notified of this unauthorized access attempt."))
+    (define (dispatch password m)
+      (if (check-password password)
+	  (cond ((eq? m 'withdraw) withdraw)
+		((eq? m 'deposit) deposit)
+		(else (error "Unknown request -- MAKE-ACCOUNT"
+			     m)))
+	  (if (> (check-password 'how-many-calls?) 6)
+	      call-the-cops
+	      (lambda args "Authentication error - incorrect password"))))
+    dispatch))
 
 ;;;SECTION 3.1.2
 
@@ -136,7 +175,7 @@
   (define (iter trials-remaining trials-passed x)
     (let ((x1 (rand-update x)))
       (let ((x2 (rand-update x1)))
-        (cond ((= trials-remaining 0)   
+        (cond ((= trials-remaining 0)
                (/ trials-passed trials))
               ((= (gcd x1 x2) 1)
                (iter (- trials-remaining 1)
@@ -153,6 +192,49 @@
 (define (random-in-range low high)
   (let ((range (- high low)))
     (+ low (random range))))
+
+(define (P x y)
+  (<= (+ (square (- x 5))
+	 (square (- y 7)))
+      (square 3)))
+
+(define (estimate-integral P x1 x2 y1 y2 trials)
+  (define (experiment)
+    (P (random-in-range x1 x2)
+       (random-in-range y1 y2)))
+  (monte-carlo trials experiment))
+
+(define (estimate-pi)
+  (/ (* (estimate-integral P 2.0 8.0 4.0 10.0 1000) 36)
+     9.0))
+
+;; (estimate-pi)
+;; 3.116
+
+
+;; EXERCISE 3.6
+
+(define rand
+  (let ((x random-init))
+    (define generate
+      (lambda ()
+	(set! x (rand-update x))
+	x))
+    (define reset
+      (lambda (new-value)
+	(set! x new-value)
+	x))
+    (define dispatch
+      (lambda (m)
+	(cond ((eq? m 'generate) (generate))
+	      ((eq? m 'reset) reset))))
+    dispatch))
+
+;; (rand 'generate)
+;; 88
+
+;; ((rand 'reset) 10)
+;; 10
 
 
 ;;;SECTION 3.1.3
@@ -189,17 +271,17 @@
 
 ;: (define D1 (make-decrementer 25))
 ;: (define D2 (make-decrementer 25))
-;: 
+;:
 ;: (define W1 (make-simplified-withdraw 25))
 ;: (define W2 (make-simplified-withdraw 25))
-;: 
+;:
 ;: (W1 20)
 ;: (W1 20)
 ;: (W2 20)
 
 ;: (define peter-acc (make-account 100))
 ;: (define paul-acc (make-account 100))
-;: 
+;:
 ;: (define peter-acc (make-account 100))
 ;: (define paul-acc peter-acc)
 
@@ -229,8 +311,34 @@
 ;: (define paul-acc
 ;:   (make-joint peter-acc 'open-sesame 'rosebud))
 
-
-;;;;SECTION 3.2
+(define (make-joint account account-password secret-password)
+  (lambda (password m)
+    (if (eq? secret-password password)
+	(account account-password m)
+	(error "Authentication failure"))))
+
+;; (define peter-acc (make-account 100 'open-sesame))
+;; ((peter-acc 'open-sesame 'withdraw) 10)
+;; 90
+
+;; (define paul-acc (make-joint peter-acc 'open-sesame 'rosebud))
+;; ((paul-acc 'rosebud 'withdraw) 10)
+;; 80
+
+;; ((paul-acc 'open-sesame 'withdraw) 10)
+;; ERRORError: geiser-debugger
+
+
+;; EXERCISE 3.8
+
+(define f
+  (let ((n -1))
+    (lambda (x)
+      (if (= n -1)
+	  (begin (set! n x)
+		 n)
+	  0))))
+;; this works backwards from how described in the text
 
 ;;;SECTION 3.2.1
 
@@ -338,13 +446,13 @@
   dispatch)
 
 ;: (define acc (make-account 50))
-;: 
+;:
 ;: ((acc 'deposit) 40)
 ;: ((acc 'withdraw) 60)
-;: 
+;:
 ;: (define acc2 (make-account 100))
 
-
+
 ;;;;SECTION 3.3
 
 ;;;SECTION 3.3.1
@@ -371,15 +479,35 @@
       x
       (last-pair (cdr x))))
 
-;: (define x (list 'a 'b))
-;: (define y (list 'c 'd))
-;: (define z (append  x y))
-;: z
-;: (cdr x)
-;: 
-;: (define w (append! x y))
-;: w
-;: (cdr x)
+;; : (define x (list 'a 'b))
+;; : (define y (list 'c 'd))
+;; : (define z (append  x y))
+;; : z
+;; (a b c d)
+
+;; : (cdr x)
+;; (b)
+
+
+
+;; : (define w (append! x y))
+;;  w
+;; (a b c d)
+
+;; (cdr x)
+;; (b c d)
+
+;; Before append!
+;; x-> [o][o] -> [o][/]
+;;      |         |
+;;      'a        'b
+;; (cdr x) returns list (b)
+
+;; After append!
+;; x-> [o][o] -> [o][o] -> [o][o] -> [o][/]
+;;      \         \         \         \
+;;      'a         'b        'c        'd
+;; (cdr x) returns list (b c d)
 
 
 ;; EXERCISE 3.13
@@ -387,7 +515,15 @@
   (set-cdr! (last-pair x) x)
   x)
 
-;: (define z (make-cycle (list 'a 'b 'c)))
+(define z (make-cycle (list 'a 'b 'c)))
+
+;; +------------------------+                  
+;; |                        |
+;; z->  [o][o]->[o][o]->[o][o]
+;;       |       |       |
+;;       'a      'b      'c
+;;
+;; calling (last-pair z) results in an infinite loop
 
 
 ;; EXERCISE 3.14
@@ -400,6 +536,26 @@
           (loop temp x))))
   (loop x '()))
 
+;; This procedure returns a new list with the ordered reversed,
+;; mutating the original list in the process, leaving it as just ((car
+;; original-list))
+
+(define v (list 'a 'b 'c 'd))
+;; v: [o][o]->[o][o]->[o][o]->[o][/]
+;;     'a      'b      'c      'd
+
+
+(define w (mystery v))
+;; w
+;; (d c b a)
+;; v
+;; (a)
+
+;;v: [o][/]
+;;    'a
+
+;;w: [o][o]->[o][o]->[o][o]->[o][/]
+;;    'd      'c      'b      'a
 
 ;;; Sharing and identity
 
@@ -416,6 +572,31 @@
 ;: z2
 ;: (set-to-wow! z2)
 
+;; Exercise 3.15
+
+;; z1 [o][o]
+;;     |  |
+;;    [o][o] -> [o][/]
+;;     'a        'b 
+;;
+;; (set-to-wow! z1)
+;; z1 [o][o]
+;;     \  \
+;;    [o][o] -> [o][/]
+;;     'wow      'b
+;;
+;; z2 [o][o] -> [o][o] -> [o][/]
+;;     |         'a        'b
+;;    [o][o] -> [o][/]
+;;     'a        'b
+;;
+;; (set-to-wow! z2)
+;;
+;; z2 [o][o] -> [o][o] -> [o][/]
+;;     |         'a        'b
+;;    [o][o] -> [o][/]
+;;     'wow      'b
+
 
 ;; EXERCISE 3.16
 (define (count-pairs x)
@@ -425,6 +606,115 @@
          (count-pairs (cdr x))
          1)))
 
+(define a (list 'a 'b 'c))
+(count-pairs a)
+3
+
+;; [o][o] -> [o][o] -> [o][/]
+;;  'a        'b        'c
+
+
+(define b1 (list 'b 'c))
+(define b2 (list 'a))
+(set-car!  b1 b2)
+(set-car! (cdr b1) b2)
+;; b1
+;; ((a) (a))
+;; (count-pairs b1)
+;; 4
+
+;; [o][o] -> [o][/]
+;;  +---------+
+;; [o][/]
+;;  'a
+
+(define c1 (list 'b 'c))
+(define c2 (list 'a))
+(define c3 (list 'd 'e))
+
+;; (set-car! c3 c2)
+;; (set-cdr! c3 c2)
+;; (set-car! c1 c3)
+;; (set-cdr! c1 c3)
+;; c1
+;; (((a) a) (a) a)
+;; (count-pairs c1)
+;; 7
+
+;; [o][o]
+;;  +--+
+;;  |
+;; [o][o]
+;;  +--+
+;;  |
+;; [o][/]
+;;  'a
+
+(define d (make-cycle (list 'a 'b 'c)))
+(count-pairs d) ;; does not return
+
+;; Exercise 3.17
+
+(define correct-count-pairs
+  (let ((aux (list '())))
+    (lambda (x)
+      (cond ((not (pair? x)) 0)
+	    ((memq x aux) 0)
+	    (else (set! aux (cons aux x))
+		  (+ (correct-count-pairs (car x))
+		     (correct-count-pairs (cdr x))
+		     1))))))
+
+(define (count-pairs x)
+  (let ((aux '()))
+    (define (loop x)
+      (if (or (not (pair? x)) (memq x aux))
+	  0
+	  (begin (set! aux (cons x aux))
+		 (+ (loop (car x))
+		    (loop (cdr x))
+		    1))))
+    (loop x)))
+
+;; (define a (list 'a 'b 'c))
+;; (correct-count-pairs a)
+;; 3
+
+(define b1 (list 'b 'c))
+(define b2 (list 'a))
+(set-car!  b1 b2)
+(set-car! (cdr b1) b2)
+(correct-count-pairs b1)
+
+
+;; Exercise 3.18
+(define (cycle? x)
+  (define (helper y)
+    (cond ((null? y) #f)
+	        ((eq? x (cdr y)) #t)
+	        (else (helper (cdr y)))))
+  (helper x))
+
+;; (define d (make-cycle (list 'a 'b 'c)))
+;; (cycle? d)
+;; #t
+
+;; (cycle? '(1 2 3))
+;; #f
+
+;; Exercise 3.19
+(define (floyd? x)
+  (define (rabbit x)
+    (cddr x))
+  (define (tortoise x)
+    (cdr x))
+  (define (helper a b)
+    (cond ((or (null? a) (null? b) (null? (cdr a))) #f)
+          ((eq? a b) #t)
+          (else (helper (rabbit a) (tortoise b)))))
+  (if (null? x)
+      #f
+      (helper (rabbit x) (tortoise x))))
 
 ;;;Mutation as assignment
 
@@ -440,7 +730,7 @@
 
 
 (define (cons x y)
-  (define (set-x! v) (set! x v))
+(  (define (set-x! v) (set! x v))
   (define (set-y! v) (set! y v))
   (define (dispatch m)
     (cond ((eq? m 'car) x)
@@ -493,22 +783,83 @@
           (else
            (set-cdr! (rear-ptr queue) new-pair)
            (set-rear-ptr! queue new-pair)
-           queue)))) 
+           queue))))
 
 (define (delete-queue! queue)
   (cond ((empty-queue? queue)
          (error "DELETE! called with an empty queue" queue))
         (else
          (set-front-ptr! queue (cdr (front-ptr queue)))
-         queue))) 
+         queue)))
 
 
-;; EXERCISE 3.21
-;: (define q1 (make-queue))
-;: (insert-queue! q1 'a)
-;: (insert-queue! q1 'b)
-;: (delete-queue! q1)
-;: (delete-queue! q1)
+;; EXERCISE 3.21				
+ ;; (define q1 (make-queue))
+ ;; (insert-queue! q1 'a)
+ ;; (insert-queue! q1 'b)
+ ;; (delete-queue! q1)
+ ;; (delete-queue! q1)
+
+ ;; => (() b)
+
+ ;;  (insert-queue! q1 'a)
+ ;;  (insert-queue! q1 'b)
+ ;;  (insert-queue! q1 'c)
+
+ ;;  => ((a b c) c)
+  
+ ;; The cdr of the queue is the rear-ptr item.  This is not deleted by
+ ;; calls to delete-queue! but this is not necessary for the queue to
+ ;; behave correctly.  Above shows what happens when more items are
+ ;; inserted into this "empty" queue
+ 
+(define (print-queue queue)
+  (car queue))
+
+;; (print-queue q1)
+;; (a b c)
+
+;; Exercise 3.22
+
+(define (make-queue)
+  (let ((front-ptr '())
+	(rear-ptr '()))
+    (define (empty-queue?) (null? front-ptr))
+    (define (set-front-ptr! item) (set! front-ptr item))
+    (define (set-rear-ptr! item) (set! rear-ptr item))
+    (define (front-queue)
+      (if (empty-queue?)
+	  (error "FRONT called with an empty queue")
+	  (car front-ptr)))
+    (define (insert-queue! item)
+      (let ((new-pair (cons item '())))
+	(cond ((empty-queue?)
+	       (set-front-ptr! new-pair)
+	       (set-rear-ptr! new-pair)
+	       dispatch)
+	      (else
+	       (set-cdr! rear-ptr new-pair)
+	       (set-rear-ptr! new-pair)
+	       dispatch))))
+    (define (delete-queue!)
+      (cond ((empty-queue?)
+	     (error "DELETE! called with an empty queue" queue))
+	    (else
+	     (set-front-ptr! (cdr front-ptr))
+	     dispatch)))
+    (define (print)
+      (display front-ptr)
+      (newline))
+    (define (dispatch m)
+      (cond ((eq? m 'insert-queue!) insert-queue!)
+	    ((eq? m 'delete-queue!) delete-queue!)
+	    ((eq? m 'print) print)
+	    ((eq? m 'empty-queue?) empty-queue?)
+	    ((eq? m 'front-queue) front-queue)))
+    dispatch))
+
+;; Exercise 3.23
+
 
 
 ;;;SECTION 3.3.3
@@ -584,7 +935,7 @@
                       (cons (list key-1
                                   (cons key-2 value))
                             (cdr local-table)))))
-      'ok)    
+      'ok)
     (define (dispatch m)
       (cond ((eq? m 'lookup-proc) lookup)
             ((eq? m 'insert-proc!) insert!)
@@ -618,7 +969,7 @@
                    ((= n 1) 1)
                    (else (+ (memo-fib (- n 1))
                             (memo-fib (- n 2))))))))
-
+
 ;;;SECTION 3.3.4
 
 ;: (define a (make-wire))
@@ -627,7 +978,7 @@
 ;: (define d (make-wire))
 ;: (define e (make-wire))
 ;: (define s (make-wire))
-;: 
+;:
 ;: (or-gate a b d)
 ;: (and-gate a b c)
 ;: (inverter c e)
@@ -728,7 +1079,7 @@
 
 (define (probe name wire)
   (add-action! wire
-               (lambda ()        
+               (lambda ()
                  (newline)
                  (display name)
                  (display " ")
@@ -742,19 +1093,19 @@
 ;: (define inverter-delay 2)
 ;: (define and-gate-delay 3)
 ;: (define or-gate-delay 5)
-;: 
+;:
 ;: (define input-1 (make-wire))
 ;: (define input-2 (make-wire))
 ;: (define sum (make-wire))
 ;: (define carry (make-wire))
-;: 
+;:
 ;: (probe 'sum sum)
 ;: (probe 'carry carry)
-;: 
+;:
 ;: (half-adder input-1 input-2 sum carry)
 ;: (set-signal! input-1 1)
 ;: (propagate)
-;: 
+;:
 ;: (set-signal! input-2 1)
 ;: (propagate)
 
@@ -875,11 +1226,11 @@
     (forget-value! a2 me)
     (process-new-value))
   (define (me request)
-    (cond ((eq? request 'I-have-a-value)  
+    (cond ((eq? request 'I-have-a-value)
            (process-new-value))
-          ((eq? request 'I-lost-my-value) 
+          ((eq? request 'I-lost-my-value)
            (process-forget-value))
-          (else 
+          (else
            (error "Unknown request -- ADDER" request))))
   (connect a1 me)
   (connect a2 me)
@@ -975,7 +1326,7 @@
           'ignored))
     (define (connect new-constraint)
       (if (not (memq new-constraint constraints))
-          (set! constraints 
+          (set! constraints
                 (cons new-constraint constraints)))
       (if (has-value? me)
           (inform-about-value new-constraint))
@@ -1042,7 +1393,7 @@
   (let ((z (make-connector)))
     (adder x y z)
     z))
-
+
 
 ;;;SECTION 3.4
 ;;;**Need parallel-execute, available for MIT Scheme
@@ -1106,8 +1457,8 @@
 ;: (define x 10)
 ;: (parallel-execute (lambda () (set! x (* x x)))
 ;:                   (lambda () (set! x (* x x x))))
-;: 
-;: 
+;:
+;:
 ;: (define x 10)
 ;: (define s (make-serializer))
 ;: (parallel-execute (s (lambda () (set! x (* x x))))
@@ -1243,7 +1594,7 @@
       serialized-p)))
 
 (define (make-mutex)
-  (let ((cell (list false)))            
+  (let ((cell (list false)))
     (define (the-mutex m)
       (cond ((eq? m 'acquire)
              (if (test-and-set! cell)
@@ -1268,7 +1619,7 @@
          true
          (begin (set-car! cell true)
                 false)))))
-
+
 ;;;SECTION 3.5
 
 ;;;SECTION 3.5.1
@@ -1512,7 +1863,7 @@
 
 (define (euler-transform s)
   (let ((s0 (stream-ref s 0))
-        (s1 (stream-ref s 1))    
+        (s1 (stream-ref s 1))
         (s2 (stream-ref s 2)))
     (cons-stream (- s2 (/ (square (- s2 s1))
                           (+ s0 (* -2 s1) s2)))
@@ -1703,4 +2054,3 @@
    balance
    (stream-withdraw (- balance (stream-car amount-stream))
                     (stream-cdr amount-stream))))
-
