@@ -860,7 +860,63 @@
 
 ;; Exercise 3.23
 
+(define (front-ptr deque) (car deque))
+(define (rear-ptr deque) (cdr deque))
 
+(define (set-front-ptr! deque item) (set-car! deque item))
+(define (set-rear-ptr! deque item) (set-cdr! deque item))
+
+(define (make-deque) (cons '() '()))
+(define (empty-deque? deque)  (and (null? (front-ptr deque))
+				  (null? (rear-ptr deque))))
+(define (front-deque deque) (if (empty-deque? deque)
+				(error "FRONT called on empty deque")
+				(caar (front-ptr deque))))
+(define (rear-deque deque) (if (empty-deque? deque)
+			       (error "REAR called on empty deque")
+			       (caar (rear-ptr deque))))
+
+(define (rear-insert-deque! deque item)
+  (let ((new-pair (cons (cons item '())
+			'() )))
+    (cond ((empty-deque? deque)
+	   (set-front-ptr! deque new-pair)
+	   (set-rear-ptr! deque new-pair))
+	  (else
+	   (set-cdr! (car new-pair) (rear-ptr deque))
+	   (set-cdr! (rear-ptr deque) new-pair)
+	   (set-rear-ptr! deque new-pair)))))
+
+(define (front-insert-deque! deque item)
+  (let ((new-pair (cons (cons item '())
+			'() )))
+    (cond ((empty-deque? deque)
+	   (set-front-ptr! deque new-pair)
+	   (set-rear-ptr! deque new-pair))
+	  (else
+	   (set-cdr! (car (front-ptr deque)) new-pair)
+	   (set-cdr! new-pair (front-ptr deque))
+	   (set-front-ptr! deque new-pair)))))
+
+(define (front-delete-deque! deque)
+  (cond ((empty-deque? deque)
+         (error "DELETE! called with an empty deque" deque))
+        (else
+         (set-front-ptr! deque (cdr (front-ptr deque)))
+	 (set-cdr! (car (front-ptr deque)) '()))))
+
+(define (rear-delete-deque! deque)
+  (cond ((empty-deque? deque)
+	 (error "DELETE! called with an empty deque" deque))
+	(else
+	 (set-rear-ptr! deque (cdar (rear-ptr deque)))
+	 (set-cdr! (rear-ptr deque) '()))))
+
+(define (print-deque deque)
+  (display (map car
+		(front-ptr deque))) (newline))
+
+	   
 
 ;;;SECTION 3.3.3
 
@@ -868,10 +924,10 @@
   (let ((record (assoc key (cdr table))))
     (if record
         (cdr record)
-        false)))
+        #f)))
 
 (define (assoc key records)
-  (cond ((null? records) false)
+  (cond ((null? records) #f)
         ((equal? key (caar records)) (car records))
         (else (assoc key (cdr records)))))
 
@@ -893,8 +949,8 @@
         (let ((record (assoc key-2 (cdr subtable))))
           (if record
               (cdr record)
-              false))
-        false)))
+              #f))
+        #f)))
 
 (define (insert! key-1 key-2 value table)
   (let ((subtable (assoc key-1 (cdr table))))
@@ -920,8 +976,8 @@
             (let ((record (assoc key-2 (cdr subtable))))
               (if record
                   (cdr record)
-                  false))
-            false)))
+                  #f))
+            #f)))
     (define (insert! key-1 key-2 value)
       (let ((subtable (assoc key-1 (cdr local-table))))
         (if subtable
@@ -947,6 +1003,95 @@
 (define put (operation-table 'insert-proc!))
 
 
+;; Exercise 3.24
+
+(define (make-table same-key?)
+  (let ((local-table (list '*table*)))
+    (define (assoc key records)
+      (cond ((null? records) #f)
+	    ((same-key? key (caar records)) (car records))
+	    (else (assoc key (cdr records)))))
+    (define (lookup key-1 key-2)
+      (let ((subtable (assoc key-1 (cdr local-table))))
+        (if subtable
+            (let ((record (assoc key-2 (cdr subtable))))
+              (if record
+                  (cdr record)
+                  #f))
+            #f)))
+    (define (insert! key-1 key-2 value)
+      (let ((subtable (assoc key-1 (cdr local-table))))
+        (if subtable
+            (let ((record (assoc key-2 (cdr subtable))))
+              (if record
+                  (set-cdr! record value)
+                  (set-cdr! subtable
+                            (cons (cons key-2 value)
+                                  (cdr subtable)))))
+            (set-cdr! local-table
+                      (cons (list key-1
+                                  (cons key-2 value))
+                            (cdr local-table)))))
+      'ok)
+    (define (dispatch m)
+      (cond ((eq? m 'lookup-proc) lookup)
+            ((eq? m 'insert-proc!) insert!)
+	    ((eq? m 'assoc) assoc)
+            (else (error "Unknown operation -- TABLE" m))))
+    dispatch))
+
+;; Exercise 3.25
+
+(define (make-table)
+  (let ((local-table (list '*table*)))
+    (define (lookup key-list)
+      (define (iter keys table)
+	(cond ((null? keys) #f)
+	      ((null? (cdr keys))
+	       (let ((record (assoc (car keys) (cdr table))))
+		 (if record
+		     (cdr record)
+		     #f)))
+	      (else
+	       (let ((subtable (assoc (car keys) (cdr table))))
+		 (if subtable
+		     (iter (cdr keys) subtable)
+		     #f)))))
+      (iter key-list local-table))
+    (define (insert! key-list value)
+      (define (iter keys table)
+	(cond ((null? table)
+	       (if (null? (cdr keys))
+		   (cons (car keys) value)
+		   (list (car keys) (iter (cdr keys) '()))))
+	      ((null? (cdr keys))
+	       (let ((record (assoc (car keys) (cdr table))))
+		 (if record
+		     (set-cdr! record value)
+		     (set-cdr! table
+			       (cons (cons (car keys) value)
+				     (cdr table))))))
+	      (else
+	       (let ((subtable (assoc (car keys) (cdr table))))
+		 (if subtable
+		     (iter (cdr keys) subtable)
+		     (set-cdr! table
+			       (cons (list (car keys)
+					   (iter (cdr keys) '()))
+				     (cdr table))))))))
+      (iter key-list value))
+    (define (dispatch m)
+      (cond ((eq? m 'lookup-proc) lookup)
+	    ((eq? m 'insert-proc!) insert!)
+	    (else (error "Unknown operation -- TABLE" m))))
+    dispatch))
+
+(define (lookup table . key-list) ((table 'lookup-proc) key-list))
+(define (insert! table value . key-list) ((table 'insert-proc!) key-list value))
+
+;; Exercise 3.26
+
+
 ;; EXERCISE 3.27
 (define (fib n)
   (cond ((= n 0) 0)
@@ -969,6 +1114,13 @@
                    ((= n 1) 1)
                    (else (+ (memo-fib (- n 1))
                             (memo-fib (- n 2))))))))
+
+;; memo-fib never computers the same result twice, instead it stores
+;; these values in a table and looks them up each time they are
+;; repeated.  each call to (fib k) is constant as long as the table
+;; structure has constant lookup time. (memoize fib) does not work
+;; because it memoizes the procedure (fib n) instead of the actual
+;; computations we want
 
 ;;;SECTION 3.3.4
 
@@ -1306,7 +1458,7 @@
   me)
 
 (define (make-connector)
-  (let ((value false) (informant false) (constraints '()))
+  (let ((value #f) (informant #f) (constraints '()))
     (define (set-my-value newval setter)
       (cond ((not (has-value? me))
              (set! value newval)
@@ -1319,7 +1471,7 @@
             (else 'ignored)))
     (define (forget-my-value retractor)
       (if (eq? retractor informant)
-          (begin (set! informant false)
+          (begin (set! informant #f)
                  (for-each-except retractor
                                   inform-about-no-value
                                   constraints))
@@ -1333,7 +1485,7 @@
       'done)
     (define (me request)
       (cond ((eq? request 'has-value?)
-             (if informant true false))
+             (if informant true #f))
             ((eq? request 'value) value)
             ((eq? request 'set-value!) set-my-value)
             ((eq? request 'forget) forget-my-value)
