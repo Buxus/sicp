@@ -1,16 +1,49 @@
 ;;;SECTION 3.3.4
 
-;: (define a (make-wire))
-;: (define b (make-wire))
-;: (define c (make-wire))
-;: (define d (make-wire))
-;: (define e (make-wire))
-;: (define s (make-wire))
-;:
-;: (or-gate a b d)
-;: (and-gate a b c)
-;: (inverter c e)
-;: (and-gate d e s)
+;;;SECTION 3.3.2
+
+(define (front-ptr queue) (car queue))
+(define (rear-ptr queue) (cdr queue))
+(define (set-front-ptr! queue item) (set-car! queue item))
+(define (set-rear-ptr! queue item) (set-cdr! queue item))
+
+(define (empty-queue? queue) (null? (front-ptr queue)))
+(define (make-queue) (cons '() '()))
+
+(define (front-queue queue)
+  (if (empty-queue? queue)
+      (error "FRONT called with an empty queue" queue)
+      (car (front-ptr queue))))
+
+(define (insert-queue! queue item)
+  (let ((new-pair (cons item '())))
+    (cond ((empty-queue? queue)
+           (set-front-ptr! queue new-pair)
+           (set-rear-ptr! queue new-pair)
+           queue)
+          (else
+           (set-cdr! (rear-ptr queue) new-pair)
+           (set-rear-ptr! queue new-pair)
+           queue))))
+
+(define (delete-queue! queue)
+  (cond ((empty-queue? queue)
+         (error "DELETE! called with an empty queue" queue))
+        (else
+         (set-front-ptr! queue (cdr (front-ptr queue)))
+         queue)))
+
+;; (define a (make-wire))
+;; (define b (make-wire))
+;; (define c (make-wire))
+;; (define d (make-wire))
+;; (define e (make-wire))
+;; (define s (make-wire))
+
+;; (or-gate a b d)
+;; (and-gate a b c)
+;; (inverter c e)
+;; (and-gate d e s)
 
 
 ;;NB. To use half-adder, need or-gate from exercise 3.28
@@ -63,6 +96,57 @@
   (add-action! a2 and-action-procedure)
   'ok)
 
+;; Exercuse 3.28
+
+(define (logical-or x y)
+  (if (or (= x 1) (= x 1))
+      1
+      0))
+
+(define (or-gate a1 a2 output)
+  (define (or-action-procedure)
+    (let ((new-value
+	   (logical-or (get-signal a2) (get-signal a2))))
+      (after-delay or-gate-delay
+		   (lambda ()
+		     (set-signal! output new-value)))))
+  (add-action! a1 or-action-procedure)
+  (add-action! a2 or-action-procedure)
+  'ok)
+
+;; Exercise 3.29
+(define (or-gate-box a1 a2 output)
+  (let ((d (make-wire))
+	(e (make-wire))
+	(c (make-wire)))
+    (inverter a1 d)
+    (inverter a2 e)
+    (and-gate d e c)
+    (inverter c o))
+  'ok)
+
+;; The delay of or-gate-box is equal to 2x inverter-gate-delay + 1x
+;; and-gate-delay
+
+;; Exercise 3.30
+
+(define (ripple-carry-adder a b s c) ;; TODO not sure if this is
+				     ;; correct yet
+  (if (null? a)
+      'ok
+      (let ((ak (car a))
+	    (bk (car b))
+	    (sk (car s))
+	    (c-out (make-wire)))
+	(full-adder ak bk c sk c-out)
+	(if (not (or (null? (cdr a))
+		     (null? (cdr b))
+		     (null? (cdr s))))
+	    (ripple-carry-adder (cdr a) (cdr b) (cdr s) c-out)
+	    'ok))))
+
+;; The delay for ripple-carry-adder is n * (delay-full-adder), or n *
+;; (2x HA + or). or n*(2*(and) + or)
 
 (define (make-wire)
   (let ((signal-value 0) (action-procedures '()))
@@ -122,30 +206,30 @@
 
 ;;; Sample simulation
 
-;: (define the-agenda (make-agenda))
-;: (define inverter-delay 2)
-;: (define and-gate-delay 3)
-;: (define or-gate-delay 5)
-;:
-;: (define input-1 (make-wire))
-;: (define input-2 (make-wire))
-;: (define sum (make-wire))
-;: (define carry (make-wire))
-;:
-;: (probe 'sum sum)
-;: (probe 'carry carry)
-;:
-;: (half-adder input-1 input-2 sum carry)
-;: (set-signal! input-1 1)
-;: (propagate)
-;:
-;: (set-signal! input-2 1)
-;: (propagate)
+;; (define the-agenda (make-agenda))
+;; (define inverter-delay 2)
+;; (define and-gate-delay 3)
+;; (define or-gate-delay 5)
+
+(define input-1 (make-wire))
+(define input-2 (make-wire))
+(define sum (make-wire))
+(define carry (make-wire))
+
+(probe 'sum sum)
+(probe 'carry carry)
+
+(half-adder input-1 input-2 sum carry)
+(set-signal! input-1 1)
+(propagate)
+
+(set-signal! input-2 1)
+(propagate)
 
 
 ;; EXERCISE 3.31
-;: (define (accept-action-procedure! proc)
-;:   (set! action-procedures (cons proc action-procedures)))
+;; (define (accept-action-procedure! proc)
+;;   (set! action-procedures (cons proc action-procedures)))
 
 
 ;;;Implementing agenda
