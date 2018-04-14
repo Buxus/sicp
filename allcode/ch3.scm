@@ -1241,7 +1241,7 @@
 
 ;;; Sample simulation
 
-;: (define the-agenda (make-agenda))
+(define the-agenda (make-agenda))
 ;: (define inverter-delay 2)
 ;: (define and-gate-delay 3)
 ;: (define or-gate-delay 5)
@@ -1517,12 +1517,52 @@
 (define (connect connector new-constraint)
   ((connector 'connect) new-constraint))
 
+;; EXERCISE 3.33
+
+(define (averager a b c)
+  (let ((u (make-connector))
+	(v (make-connector)))
+    (multiplier c v u)
+    (adder a b u)
+    (constant 2 v)
+    'ok))
 
 ;; EXERCISE 3.34
 
-(define (squarer a b)
-  (multiplier a a b))
+;; (define (squarer a b)
+;;   (multiplier a a b))
 
+;; this works for calculating a -> b but not a from b.  a from b
+;; returns #f because when multiplier is called, process-new-value
+;; fails as it does not see a cond where two values are present.
+
+;; EXERCISE 3.35
+
+(define (squarer a b)
+  (define (process-new-value)
+    (if (has-value? b)
+        (if (< (get-value b) 0)
+            (error "square less than 0 -- SQUARER" (get-value b))
+            (set-value! a
+			(sqrt (get-value b))
+			me))
+        (set-value! b
+		    (* (get-value a) (get-value a))
+		    me)))
+  (define (process-forget-value)
+    (forget-value! a me)
+    (forget-value! b me)
+    (process-new-value))
+  (define (me request)
+    (cond ((eq? request 'I-have-a-value)
+	   (process-new-value))
+	  ((eq? request 'I-lost-my-value)
+	   (process-forget-value))
+	  (else
+	   (error "Unknown request -- squarer" request))))
+  (connect a me)
+  (connect b me)
+  me)
 
 
 ;; EXERCISE 3.36
@@ -1538,14 +1578,32 @@
           x)
       (cv 32)))
 
-;: (define C (make-connector))
-;: (define F (celsius-fahrenheit-converter C))
+(define C (make-connector))
+(define F (celsius-fahrenheit-converter C))
 
 (define (c+ x y)
   (let ((z (make-connector)))
     (adder x y z)
     z))
 
+(define (c- x y)
+  (let ((z (make-connector)))
+    (adder z y x)))
+
+(define (c* x y)
+  (let ((z (make-connector))) 
+   (multiplier x y z)
+    z))
+
+(define (c/ x y)
+  (let ((z (make-connector)))
+    (multiplier z y x)
+    z))
+
+(define (cv value)
+  (let ((z (make-connector)))
+    (constant value z)
+    z))
 
 ;;;SECTION 3.4
 ;;;**Need parallel-execute, available for MIT Scheme
@@ -1560,10 +1618,16 @@
 
 
 ;; EXERCISE 3.38
-;: (set! balance (+ balance 10))
-;: (set! balance (- balance 20))
-;: (set! balance (- balance (/ balance 2)))
+;: Peter -> (set! balance (+ balance 10))
+;: Paul  -> (set! balance (- balance 20))
+;: Mary  -> (set! balance (- balance (/ balance 2)))
 
+;; Peter->Paul->Mary: 110>90>45
+;; Peter->Mary->Paul: 110>55>35
+;; Paul->Peter->Mary: 80>90>45
+;; Paul->Mary->Peter: 80>40>50
+;; Mary->Peter->Paul: 50>60>40
+;; Mary->Paul->Peter: 50>30>40
 
 ;;;SECTION 3.4.2
 
@@ -1598,23 +1662,31 @@
 
 ;; EXERCISE 3.39
 
-;: (define x 10)
-;: (define s (make-serializer))
-;: (parallel-execute (lambda () (set! x ((s (lambda () (* x x))))))
-;:                   (s (lambda () (set! x (+ x 1)))))
+;; (define x 10)
+;; (define s (make-serializer))
+;; (parallel-execute (lambda () (set! x ((s (lambda () (* x x))))))
+;;                   (s (lambda () (set! x (+ x 1)))))
 
 
 ;; EXERCISE 3.40
 
-;: (define x 10)
-;: (parallel-execute (lambda () (set! x (* x x)))
-;:                   (lambda () (set! x (* x x x))))
-;:
-;:
-;: (define x 10)
-;: (define s (make-serializer))
-;: (parallel-execute (s (lambda () (set! x (* x x))))
-;:                   (s (lambda () (set! x (* x x x)))))
+; (define x 10)
+; (parallel-execute (lambda () (set! x (* x x)))
+;                   (lambda () (set! x (* x x x))))
+
+;; 10^2^3
+;; 10^3^2
+;; 10*1000
+;; 100
+;; 1000
+
+;
+; (define x 10)
+; (define s (make-serializer))
+; (parallel-execute (s (lambda () (set! x (* x x))))
+;                   (s (lambda () (set! x (* x x x)))))
+
+;; only 10^6 remains
 
 
 ;; EXERCISE 3.41
@@ -1638,6 +1710,9 @@
                          m))))
     dispatch))
 
+;; Balance only reads the current value, and should not affect the
+;; behavior or withdraw or deposit
+
 ;; EXERCISE 3.42
 
 (define (make-account balance)
@@ -1659,6 +1734,11 @@
 	      (else (error "Unknown request -- MAKE-ACCOUNT"
 			   m))))
       dispatch)))
+
+;; These two version should function the same.  Two serialized
+;; procedures will never interleave if they are both created by the
+;; same serializer
+
 
 ;;;Multiple shared resources
 
@@ -1699,6 +1779,9 @@
     ((serializer1 (serializer2 exchange))
      account1
      account2)))
+
+;; EXERCISE 3.43
+
 
 
 ;; EXERCISE 3.44
